@@ -36,6 +36,7 @@ button:active:not(:disabled){transform:scale(.97)}
 input.s{width:100%;margin-bottom:10px}
 .tag{display:inline-block;font-size:11px;color:var(--mu);border:1px solid var(--bd);border-radius:8px;padding:1px 6px;margin-bottom:4px}
 .ban.fh{background:var(--am);color:#fff}.ban.pp{background:#2b6cb0;color:#fff;font-weight:500}.nm{font-weight:600}.ni{width:150px;padding:6px 8px;font-size:15px;margin-left:4px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px}label{display:flex;gap:6px;align-items:center}
+.ov button{padding:8px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:14px}
 </style></head><body>
 <h1>🏏 Umpire’s Companion</h1>
 <div class="tabs"><button data-t="score">Score</button><button data-t="overs">Overs</button><button data-t="rules">Rules</button></div>
@@ -43,30 +44,33 @@ input.s{width:100%;margin-bottom:10px}
 <script>
 var KEY="umpire-v2",S={ev:[],max:20,mode:"run",tab:"score",q:"",fh:true,pp:true,bmax:0,bat:["Batter 1","Batter 2"],bowl:["Bowler 1"],cur:{str:0,non:1,bowl:0}};
 try{var p=JSON.parse(localStorage.getItem(KEY)||"{}");for(var k in p)S[k]=p[k]}catch(e){}
-var DB=null,last="",unsub=null,syncMsg="",PR=false,PRR=0,ADDB=false,RC=false,jmsg="";
+var DB=null,USER=null,META=null,last="",lastMeta="",unsub=null,syncMsg="",needMeta=false,PR=false,PRR=0,ADDB=false,RC=false,jmsg="";
 function norm(o){return JSON.stringify({ev:o.ev||[],bat:o.bat,bowl:o.bowl,cur:o.cur,max:o.max,fh:o.fh,pp:o.pp,bmax:o.bmax})}
 function lsave(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function save(){lsave();push()}
-function push(){if(!DB||!S.mc||S.watch)return;var s=norm(S);if(s==last)return;last=s;
- DB.doc("matches/"+S.mc).set(JSON.parse(s)).then(function(){if(syncMsg){syncMsg="";render()}}).catch(function(){syncMsg="Couldn’t sync. You may only have view access.";render()})}
+function canWrite(){return !!(USER&&META&&(META.owner==USER.uid||(USER.email&&META.scorers.indexOf(USER.email.toLowerCase())>=0)))}
+function push(){if(!DB||!S.mc||S.watch)return;var s=norm(S);if(s==last)return;last=s;var o=JSON.parse(s);
+ if(needMeta){o.owner=USER.uid;o.scorers=[];needMeta=false}
+ DB.set("matches/"+S.mc,o).then(function(){if(syncMsg){syncMsg="";render()}}).catch(function(){syncMsg="Couldn’t sync. You may not have scoring access.";render()})}
 function gen(){var a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",r="";for(var i=0;i<5;i++)r+=a[Math.floor(Math.random()*a.length)];return r}
-function leave(){if(unsub){unsub();unsub=null}S.mc="";S.watch=false;last="";syncMsg="";lsave();render()}
+function leave(){if(unsub){unsub();unsub=null}S.mc="";S.watch=false;META=null;last="";lastMeta="";syncMsg="";lsave();render()}
 function spec(){if(!(S.mc&&S.watch))return;
  [".pad+div",".pad",".modes",".row"].forEach(function(s){document.querySelectorAll("#app "+s).forEach(function(x){x.remove()})});
  var bn=document.getElementById("bname");if(bn)bn.closest(".ov").remove();
  document.querySelectorAll("#app input[data-bn],#app select").forEach(function(x){x.disabled=true})}
-function join(code,allow,watch){
- if(!DB)return;if(unsub){unsub();unsub=null}
- S.mc=code;S.watch=!!watch;jmsg="";last="";syncMsg="Connecting…";lsave();var first=true;
- unsub=DB.doc("matches/"+code).onSnapshot(function(sn){
-  if(!sn.exists){if(allow&&first){first=false;push()}else if(first){first=false;leave();jmsg="No match found with that code.";render()}return}
-  first=false;var d=sn.data(),s=norm(d);if(s==last)return;last=s;
+function join(code,creating){
+ if(!DB||!USER)return;if(unsub){unsub();unsub=null}
+ S.mc=code;S.watch=!creating;needMeta=!!creating;META=creating?{owner:USER.uid,scorers:[]}:null;jmsg="";last="";lastMeta="";syncMsg="Connecting…";lsave();var first=true;
+ unsub=DB.watch("matches/"+code,function(sn){
+  if(!sn.exists){if(creating&&first){first=false;push()}else if(first){first=false;leave();jmsg="No match found with that code.";render()}return}
+  first=false;var d=sn.data(),ms=JSON.stringify([d.owner,d.scorers||[]]),mch=ms!=lastMeta;lastMeta=ms;
+  META={owner:d.owner,scorers:d.scorers||[]};S.watch=!canWrite();
+  var s=norm(d);if(s==last){syncMsg="";if(mch)render();return}last=s;
   ["ev","bat","bowl","cur","max","fh","pp","bmax"].forEach(function(k){if(d[k]!==undefined)S[k]=JSON.parse(JSON.stringify(d[k]))});
   syncMsg="";lsave();var a=document.activeElement;if(!(a&&a.tagName=="INPUT"))render();
  },function(){syncMsg="Sync error. Check your access.";render()});
  render();
 }
-
 var RULES=[
 ["Basics","The over","An over is six legal deliveries. Wides and no balls don’t count toward the six, so they are bowled again. A bowler can’t bowl two overs in a row. The next over is bowled from the other end after the change of ends.","over six balls consecutive bowler"],
 ["Extras","No ball","Called for: front foot over the popping crease or wide of the return crease; a full toss above waist height; ball bouncing more than twice or rolling along the ground; fielding side breaking field restrictions; wicket-keeper in front of the stumps before the ball reaches the striker. Penalty is 1 run plus the re-bowl. In limited-overs matches a no ball is followed by a free hit (a playing-condition, so check the match rules). Signal: arm extended horizontally.","no-ball front foot overstep free hit waist"],
@@ -160,10 +164,21 @@ function render(){
   h+=cr;
   h+='<div class="row mu"><label>Match <select id="max">'+[[0,"Unlimited"],[5,"5 ov"],[10,"10 ov"],[20,"20 ov"],[50,"50 ov"]].map(function(o){return '<option value="'+o[0]+'"'+(S.max==o[0]?" selected":"")+'>'+o[1]+'</option>'}).join("")+'</select></label><label>Bowler max <input class="ni" type="number" id="bmax" min="0" max="50" inputmode="numeric" style="width:70px" value="'+S.bmax+'"> (0 = none)</label></div>';
   h+='<div class="row mu"><label><input type="checkbox" id="fhc"'+(S.fh?" checked":"")+'> Free hit after no ball</label><label><input type="checkbox" id="ppc"'+(S.pp?" checked":"")+'> Powerplay</label></div>';
-  h+='<div class="card"><div class="mu">SHARE WITH THE OTHER UMPIRE</div>';
-  if(!DB)h+='<div class="mu" style="margin-top:6px">Live sharing isn’t available here. Open the page signed in with Contributor or Editor access.</div>';
-  else if(S.mc)h+='<div class="ov"><span>Match code <b style="letter-spacing:.1em">'+S.mc+'</b></span><button id="leave">Leave</button></div><div class="mu">'+(syncMsg||(S.watch?"Watching live. View only, nothing you do here changes the match.":"Live: both umpires see every ball. Score from one phone at a time."))+'</div>';
-  else h+='<div class="row"><button id="mstart">Start shared match</button></div><div class="row"><input class="ni" id="mcode" placeholder="Enter code" maxlength="8" style="text-transform:uppercase"><button id="mjoin">Join</button><button id="mwatch">Watch</button></div>'+(jmsg?'<div class="mu">'+jmsg+'</div>':"");
+  h+='<div class="card"><div class="mu">SHARE &amp; LIVE SCORING</div>';
+  if(!window.FB)h+='<div class="mu" style="margin-top:6px">Live sharing isn’t set up yet. Add your Firebase settings in the page to turn it on.</div>';
+  else if(!USER)h+='<div class="row"><button id="signin">Sign in with Google</button></div><div class="mu">Sign in to start or join a shared match.</div>';
+  else{
+   h+='<div class="ov"><span class="mu">'+esc(USER.email||"Signed in")+'</span><button id="signout">Sign out</button></div>';
+   if(S.mc){
+    h+='<div class="ov"><span>Match code <b style="letter-spacing:.1em">'+S.mc+'</b></span><button id="leave">Leave</button></div><div class="mu">'+(syncMsg||(S.watch?"Watching live. View only.":"Live. You can score. Only one umpire should score at a time."))+'</div>';
+    if(META&&META.owner==USER.uid){
+     h+='<div class="mu" style="margin-top:8px">CO-UMPIRES WHO CAN SCORE (their Google email)</div>';
+     (META.scorers||[]).forEach(function(e){h+='<div class="ov"><span>'+esc(e)+'</span><button data-rs="'+esc(e)+'">Remove</button></div>'});
+     h+='<div class="row"><input class="ni" id="semail" type="email" placeholder="umpire@gmail.com" style="width:170px"><button id="sadd">Add</button></div>';
+    }
+   }else h+='<div class="row"><button id="mstart">Start shared match</button></div><div class="row"><input class="ni" id="mcode" placeholder="Enter code" maxlength="8" style="text-transform:uppercase"><button id="mjoin">Join</button></div><div class="mu">Anyone signed in with the code can watch. Only co-umpires you add can score.</div>';
+  }
+  if(jmsg)h+='<div class="mu">'+esc(jmsg)+'</div>';
   h+='</div>';
  }else if(S.tab=="overs"){
   h+='<div class="card"><div class="mu">BATTING</div>';
@@ -210,9 +225,33 @@ function wire(){
  if($("mjoin"))$("mjoin").onclick=function(){var v=($("mcode").value||"").trim().toUpperCase();if(v)join(v,false)};
  if($("mwatch"))$("mwatch").onclick=function(){var v=($("mcode").value||"").trim().toUpperCase();if(v)join(v,false,true)};
  if($("leave"))$("leave").onclick=leave;
+ if($("signin"))$("signin").onclick=function(){jmsg="";window.FB.signIn().catch(function(){jmsg="Sign-in failed. Check that this site is an authorized domain in Firebase.";render()})};
+ if($("signout"))$("signout").onclick=function(){window.FB.signOut()};
+ if($("sadd"))$("sadd").onclick=function(){var v=$("semail").value.trim().toLowerCase();if(v&&v.indexOf("@")>0)DB.add("matches/"+S.mc,v).catch(function(){jmsg="Couldn’t add. Only the match owner can.";render()})};
+ document.querySelectorAll("[data-rs]").forEach(function(b){b.onclick=function(){DB.rem("matches/"+S.mc,b.dataset.rs)}});
  var q=$("q");if(q)q.oninput=function(){S.q=q.value;save();var p=q.selectionStart;render();var n=$("q");n.focus();n.setSelectionRange(p,p)};
 }
 document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){S.tab=b.dataset.t;save();render()}});
 render();
-try{if(window.claude&&claude.use)claude.use("db").then(function(d){DB=d;if(DB&&S.mc)join(S.mc,true,S.watch);else render()}).catch(function(){})}catch(e){}
-</script></body></html>
+window.onUser=function(u){USER=u;DB=window.FB;if(!u){if(unsub){unsub();unsub=null}S.mc="";S.watch=false;META=null;lsave()}else if(S.mc&&!unsub)join(S.mc,false);render()};
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,doc,setDoc,onSnapshot,updateDoc,arrayUnion,arrayRemove} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+// STEP: paste your Firebase web app settings here (Project settings > Your apps > Web)
+const firebaseConfig={apiKey:"PASTE_API_KEY",authDomain:"PASTE_PROJECT_ID.firebaseapp.com",projectId:"PASTE_PROJECT_ID",appId:"PASTE_APP_ID"};
+if(!firebaseConfig.apiKey.startsWith("PASTE")){
+ const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+ window.FB={
+  signIn:()=>signInWithPopup(auth,new GoogleAuthProvider()),
+  signOut:()=>signOut(auth),
+  set:(p,d)=>setDoc(doc(db,p),d,{merge:true}),
+  watch:(p,ok,err)=>onSnapshot(doc(db,p),s=>ok({exists:s.exists(),data:()=>s.data()}),err),
+  add:(p,e)=>updateDoc(doc(db,p),{scorers:arrayUnion(e)}),
+  rem:(p,e)=>updateDoc(doc(db,p),{scorers:arrayRemove(e)})
+ };
+ onAuthStateChanged(auth,u=>{window.onUser&&window.onUser(u)});
+}
+</script>
+</body></html>
