@@ -165,7 +165,7 @@ function render(){
   h+='<div class="row mu"><label>Match <select id="max">'+[[0,"Unlimited"],[5,"5 ov"],[10,"10 ov"],[20,"20 ov"],[50,"50 ov"]].map(function(o){return '<option value="'+o[0]+'"'+(S.max==o[0]?" selected":"")+'>'+o[1]+'</option>'}).join("")+'</select></label><label>Bowler max <input class="ni" type="number" id="bmax" min="0" max="50" inputmode="numeric" style="width:70px" value="'+S.bmax+'"> (0 = none)</label></div>';
   h+='<div class="row mu"><label><input type="checkbox" id="fhc"'+(S.fh?" checked":"")+'> Free hit after no ball</label><label><input type="checkbox" id="ppc"'+(S.pp?" checked":"")+'> Powerplay</label></div>';
   h+='<div class="card"><div class="mu">SHARE &amp; LIVE SCORING</div>';
-  if(!window.FB)h+='<div class="mu" style="margin-top:6px">Live sharing isn’t set up yet. Add your Firebase settings in the page to turn it on.</div>';
+  if(!window.FB)h+='<div class="mu" style="margin-top:6px">'+(window.FBERR?'Firebase error: '+esc(window.FBERR):'Connecting to Firebase…')+'</div>';
   else if(!USER)h+='<div class="row"><button id="signin">Sign in with Google</button></div><div class="mu">Sign in to start or join a shared match.</div>';
   else{
    h+='<div class="ov"><span class="mu">'+esc(USER.email||"Signed in")+'</span><button id="signout">Sign out</button></div>';
@@ -233,25 +233,25 @@ function wire(){
 }
 document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){S.tab=b.dataset.t;save();render()}});
 render();
+window.onFBErr=function(){render()};
 window.onUser=function(u){USER=u;DB=window.FB;if(!u){if(unsub){unsub();unsub=null}S.mc="";S.watch=false;META=null;lsave()}else if(S.mc&&!unsub)join(S.mc,false);render()};
 </script>
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,doc,setDoc,onSnapshot,updateDoc,arrayUnion,arrayRemove} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-// STEP: paste your Firebase web app settings here (Project settings > Your apps > Web)
+// Firebase web app settings (Project settings > Your apps > Web)
 const firebaseConfig={apiKey:"AIzaSyCQB_dL9AIXvNW1xOaZ92FaiwOKSmE7FrU",authDomain:"umpire-app-17f2b.firebaseapp.com",projectId:"umpire-app-17f2b",appId:"1:782554360427:web:dc96c3545564b4fa20df2e"};
-if(!firebaseConfig.apiKey.startsWith("PASTE")){
- const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const V="10.14.1",B="https://www.gstatic.com/firebasejs/"+V+"/";
+(async()=>{try{
+ const [A,Au,F]=await Promise.all([import(B+"firebase-app.js"),import(B+"firebase-auth.js"),import(B+"firebase-firestore.js")]);
+ const app=A.initializeApp(firebaseConfig),auth=Au.getAuth(app),db=F.getFirestore(app);
  window.FB={
-  signIn:()=>signInWithPopup(auth,new GoogleAuthProvider()),
-  signOut:()=>signOut(auth),
-  set:(p,d)=>setDoc(doc(db,p),d,{merge:true}),
-  watch:(p,ok,err)=>onSnapshot(doc(db,p),s=>ok({exists:s.exists(),data:()=>s.data()}),err),
-  add:(p,e)=>updateDoc(doc(db,p),{scorers:arrayUnion(e)}),
-  rem:(p,e)=>updateDoc(doc(db,p),{scorers:arrayRemove(e)})
+  signIn:()=>Au.signInWithPopup(auth,new Au.GoogleAuthProvider()),
+  signOut:()=>Au.signOut(auth),
+  set:(p,d)=>F.setDoc(F.doc(db,p),d,{merge:true}),
+  watch:(p,ok,err)=>F.onSnapshot(F.doc(db,p),s=>ok({exists:s.exists(),data:()=>s.data()}),err),
+  add:(p,e)=>F.updateDoc(F.doc(db,p),{scorers:F.arrayUnion(e)}),
+  rem:(p,e)=>F.updateDoc(F.doc(db,p),{scorers:F.arrayRemove(e)})
  };
- onAuthStateChanged(auth,u=>{window.onUser&&window.onUser(u)});
-}
+ Au.onAuthStateChanged(auth,u=>{window.onUser&&window.onUser(u)},e=>{window.FBERR=(e&&e.message)||String(e);window.onFBErr&&window.onFBErr()});
+}catch(e){window.FBERR=(e&&e.message)||String(e);window.onFBErr&&window.onFBErr()}})();
 </script>
 </body></html>
