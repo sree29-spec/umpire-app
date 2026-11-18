@@ -240,8 +240,8 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase
 import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {getFirestore,doc,setDoc,onSnapshot,updateDoc,arrayUnion,arrayRemove} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 // STEP: paste your Firebase web app settings here (Project settings > Your apps > Web)
-const firebaseConfig={apiKey:"PASTE_API_KEY",authDomain:"PASTE_PROJECT_ID.firebaseapp.com",projectId:"PASTE_PROJECT_ID",appId:"PASTE_APP_ID"};
-if(!firebaseConfig.apiKey.startsWith("PASTE")){
+const firebaseConfig={apiKey:"AIzaSyCQB_dL9AIXvNW1xOaZ92FaiwOKSmE7FrU",authDomain:"umpire-app-17f2b.firebaseapp.com",projectId:"umpire-app-17f2b",appId:"1:782554360427:web:dc96c3545564b4fa20df2e"};
+if(!firebaseConfig.apiKey.startsWith("AIzaSyCQB_dL9AIXvNW1xOaZ92FaiwOKSmE7FrU")){
  const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
  window.FB={
   signIn:()=>signInWithPopup(auth,new GoogleAuthProvider()),
