@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Umpire’s Companion</title>
+<style>
+:root{--bg:#f4f6f1;--card:#fff;--tx:#17211a;--mu:#5d6b61;--ac:#1b7a43;--acx:#fff;--bd:#d9e0d6;--rd:#c0392b;--am:#b7791f;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1712;--card:#18231c;--tx:#e8efe9;--mu:#98a89d;--ac:#3fbf74;--acx:#07140c;--bd:#2a3a2f;--rd:#ef6c5d;--am:#e6b35a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1712;--card:#18231c;--tx:#e8efe9;--mu:#98a89d;--ac:#3fbf74;--acx:#07140c;--bd:#2a3a2f;--rd:#ef6c5d;--am:#e6b35a;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;padding:12px 12px 80px}
+h1{font-size:18px;margin:4px 0 10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font-weight:600;font-size:15px}
+.tabs button.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+.big{display:flex;justify-content:space-around;text-align:center}
+.big b{display:block;font-size:34px;line-height:1.1}.big span{color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.balls{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;justify-content:center;min-height:38px}
+.ball{min-width:36px;height:36px;border-radius:18px;border:2px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;padding:0 6px}
+.ball.x{border-color:var(--am);color:var(--am)}.ball.w{background:var(--rd);border-color:var(--rd);color:#fff}.ball.b{border-color:var(--ac);color:var(--ac)}
+.modes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.modes button{flex:1 1 auto;padding:9px 6px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font-size:14px}
+.modes button.on{background:var(--am);border-color:var(--am);color:#fff;font-weight:700}
+.pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pad button{height:58px;font-size:22px;font-weight:700;border-radius:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx)}
+.pad button.wk{background:var(--rd);color:#fff;border-color:var(--rd);font-size:17px}
+button:disabled{opacity:.4}
+button:active:not(:disabled){transform:scale(.97)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px}
+.row button,select,input{padding:10px 12px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:15px}
+.ban{background:var(--ac);color:var(--acx);padding:10px 12px;border-radius:10px;margin-bottom:12px;font-weight:600}
+.ban.end{background:var(--rd);color:#fff}
+.ov{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-top:1px solid var(--bd);font-size:14px}
+.ov:first-child{border-top:0}.mu{color:var(--mu);font-size:13px}
+.rule h3{margin:0 0 4px;font-size:16px}.rule p{margin:0;font-size:15px}
+input.s{width:100%;margin-bottom:10px}
+.tag{display:inline-block;font-size:11px;color:var(--mu);border:1px solid var(--bd);border-radius:8px;padding:1px 6px;margin-bottom:4px}
+.ban.fh{background:var(--am);color:#fff}.ban.pp{background:#2b6cb0;color:#fff;font-weight:500}.nm{font-weight:600}.ni{width:150px;padding:6px 8px;font-size:15px;margin-left:4px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px}label{display:flex;gap:6px;align-items:center}
+</style></head><body>
+<h1>🏏 Umpire’s Companion</h1>
+<div class="tabs"><button data-t="score">Score</button><button data-t="overs">Overs</button><button data-t="rules">Rules</button></div>
+<div id="app"></div>
+<script>
+var KEY="umpire-v2",S={ev:[],max:20,mode:"run",tab:"score",q:"",fh:true,pp:true,bmax:0,bat:["Batter 1","Batter 2"],bowl:["Bowler 1"],cur:{str:0,non:1,bowl:0}};
+try{var p=JSON.parse(localStorage.getItem(KEY)||"{}");for(var k in p)S[k]=p[k]}catch(e){}
+var DB=null,last="",unsub=null,syncMsg="",PR=false,PRR=0,ADDB=false,RC=false,jmsg="";
+function norm(o){return JSON.stringify({ev:o.ev||[],bat:o.bat,bowl:o.bowl,cur:o.cur,max:o.max,fh:o.fh,pp:o.pp,bmax:o.bmax})}
+function lsave(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function save(){lsave();push()}
+function push(){if(!DB||!S.mc||S.watch)return;var s=norm(S);if(s==last)return;last=s;
+ DB.doc("matches/"+S.mc).set(JSON.parse(s)).then(function(){if(syncMsg){syncMsg="";render()}}).catch(function(){syncMsg="Couldn’t sync. You may only have view access.";render()})}
+function gen(){var a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",r="";for(var i=0;i<5;i++)r+=a[Math.floor(Math.random()*a.length)];return r}
+function leave(){if(unsub){unsub();unsub=null}S.mc="";S.watch=false;last="";syncMsg="";lsave();render()}
+function spec(){if(!(S.mc&&S.watch))return;
+ [".pad+div",".pad",".modes",".row"].forEach(function(s){document.querySelectorAll("#app "+s).forEach(function(x){x.remove()})});
+ var bn=document.getElementById("bname");if(bn)bn.closest(".ov").remove();
+ document.querySelectorAll("#app input[data-bn],#app select").forEach(function(x){x.disabled=true})}
+function join(code,allow,watch){
+ if(!DB)return;if(unsub){unsub();unsub=null}
+ S.mc=code;S.watch=!!watch;jmsg="";last="";syncMsg="Connecting…";lsave();var first=true;
+ unsub=DB.doc("matches/"+code).onSnapshot(function(sn){
+  if(!sn.exists){if(allow&&first){first=false;push()}else if(first){first=false;leave();jmsg="No match found with that code.";render()}return}
+  first=false;var d=sn.data(),s=norm(d);if(s==last)return;last=s;
+  ["ev","bat","bowl","cur","max","fh","pp","bmax"].forEach(function(k){if(d[k]!==undefined)S[k]=JSON.parse(JSON.stringify(d[k]))});
+  syncMsg="";lsave();var a=document.activeElement;if(!(a&&a.tagName=="INPUT"))render();
+ },function(){syncMsg="Sync error. Check your access.";render()});
+ render();
+}
+
+var RULES=[
+["Basics","The over","An over is six legal deliveries. Wides and no balls don’t count toward the six, so they are bowled again. A bowler can’t bowl two overs in a row. The next over is bowled from the other end after the change of ends.","over six balls consecutive bowler"],
+["Extras","No ball","Called for: front foot over the popping crease or wide of the return crease; a full toss above waist height; ball bouncing more than twice or rolling along the ground; fielding side breaking field restrictions; wicket-keeper in front of the stumps before the ball reaches the striker. Penalty is 1 run plus the re-bowl. In limited-overs matches a no ball is followed by a free hit (a playing-condition, so check the match rules). Signal: arm extended horizontally.","no-ball front foot overstep free hit waist"],
+["Extras","Wide ball","A ball too wide of the striker for them to reach with a normal cricket stroke from their guard. Penalty is 1 run plus the re-bowl, and any runs the batters run are added. Limited-overs matches often use a tighter wide guideline, so check the playing conditions. Signal: both arms extended horizontally.","wide guideline"],
+["Extras","Byes and leg byes","Byes are runs when the ball misses the bat and the striker and goes past the keeper. Leg byes are runs off the striker’s body (not the bat) when the striker was playing a shot or trying to avoid the ball. If the striker made no attempt to play or avoid the ball, no leg byes are allowed and the ball is dead-balled. Signals: bye is an open palm raised; leg bye is a touch of the raised knee.","bye leg bye extras"],
+["Dismissals","Appeals","A batter can only be given out if the fielding side appeals. An umpire can only give a decision on a bowler’s end or square leg appeal. The batter is not out until the umpire says so, but the appeal must be made before the next ball is bowled (or the over ends, before play restarts).","appeal howzat out"],
+["Dismissals","Bowled and caught","Bowled: the wicket is put down by the delivery, even off the bat or body. Caught: a fielder takes a clean catch, with no part of the fielder touching the boundary and the ball not touching the ground. A catch can be taken off the bat or glove (holding the bat) but not the arm or shoulder.","bowled caught catch glove"],
+["Dismissals","LBW","The ball hits the batter’s body (not bat) before the stumps, pitches in line or outside off, and would have hit the stumps. If the batter is struck outside the line of off stump while playing a shot, they cannot be out. If no shot was offered, impact outside off means not out. The ball must not pitch outside leg.","lbw leg before wicket line impact"],
+["Dismissals","Run out and stumped","Run out: the wicket is broken while no part of the batter’s bat or body is grounded behind the popping crease. The nearer batter is out if the batters crossed. Stumped: the keeper breaks the wicket while the striker is out of the crease and not attempting a run, off a legal ball.","run out stumped crease"],
+["Dismissals","Other ways to be out","Hit wicket, handled the ball, hit the ball twice, obstructing the field, timed out. In most cases a wicket can’t fall to a no ball, except for run out, handling the ball, obstructing the field and hitting the ball twice. On a wide, hit wicket, stumped and run out are valid.","hit wicket handled ball obstructing timed out"],
+["Scoring","Boundaries","Four: the ball touches or crosses the boundary after hitting the ground. Six: the ball crosses the boundary without having touched the ground. If a fielder is touching the boundary or the ground beyond it when they touch the ball, it is a boundary. Signals: four is a wave across the body; six is both arms raised above the head.","four six boundary"],
+["Scoring","Short run","If a batter fails to touch the ground behind the popping crease at the end of a run, the run is short and does not count. Signal: bend the arm to touch the shoulder with the fingertips. Tell the scorers the correct number of runs.","short run scoring"],
+["Scoring","Dead ball","The ball is dead when it is settled in the keeper’s or bowler’s hands, after a boundary, when a batter is out, or when the umpire calls dead ball. The ball becomes live when the bowler starts their run-up or action. Signal: cross and uncross the wrists below the waist.","dead ball over"],
+["Fair play","Unfair play and conduct","The umpire can warn, then penalise (5 penalty runs) for unfair play such as ball tampering, time wasting, running on the pitch or dangerous play. Serious misbehaviour is reported under the player’s conduct rules. Signal for 5 penalty runs: tap the arm.","ball tampering penalty runs conduct time wasting"],
+["Fair play","Dangerous bowling","Persistent short-pitched bowling is unfair if it endangers the striker. Bowling a bouncer that is high above the striker’s head is likely to be a wide in limited-overs cricket. Check playing conditions for the maximum number of short balls per over.","bouncer short pitched dangerous"],
+["Fielding","Powerplay field restrictions","In limited-overs cricket, the number of fielders allowed outside the 30-yard circle depends on the phase. T20: overs 1–6 allow 2 outside, then 5. ODI (50 overs): overs 1–10 allow 2 outside, overs 11–40 allow 4, overs 41–50 allow 5. Reduced-overs matches use scaled phases, so check the playing conditions. If the fielding side has too many outside, call a no ball for the breach (the batting side gets the penalty and a free hit where used).","powerplay fielders circle 30 yard restriction"],
+["Signals","Common umpire signals","Out: raised index finger. Not out: shake the head, no signal needed. New ball: hold it above head. Revoke a signal: touch both shoulders with the opposite hands. Third umpire (TV replay): draw a rectangle in the air. Last hour: tap the wrist.","signals new ball tv replay"],
+["Gear","Before play","Check: pitch length of 22 yards and crease markings, the stumps and bails, ball condition and size, boundaries clear, a clear understanding of playing conditions with both captains. Agree the way for batters to be given out in tie-break or interrupted matches.","checklist pitch toss"]
+];
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;")}
+function derive(){
+ var runs=0,w=0,L=0,ex=0,ov=[[]],bat={},bw={},fh=false,out={};
+ S.ev.forEach(function(e){
+  var r=e.r||0,leg=1,lab=String(r),br=0,face=0,bc=0;
+  if(e.k=="run"){runs+=r;lab=r?String(r):"•";br=r;face=1;bc=r}
+  else if(e.k=="bye"){runs+=r;ex+=r;lab="B"+r;face=1}
+  else if(e.k=="lb"){runs+=r;ex+=r;lab="Lb"+r;face=1}
+  else if(e.k=="wd"){runs+=1+r;ex+=1+r;leg=0;lab="Wd"+(r?"+"+r:"");bc=1+r}
+  else if(e.k=="nb"){runs+=1+r;ex+=1;leg=0;lab="Nb"+(r?"+"+r:"");br=r;face=1;bc=1+r}
+  else if(e.k=="w"){w++;runs+=r;br=r;bc=r;lab=(e.ro?"RO":"W")+(r?"+"+r:"");face=1;out[e.out]=1}
+  var x=bat[e.str]=bat[e.str]||{r:0,b:0};x.r+=br;x.b+=face;
+  var y=bw[e.bowl]=bw[e.bowl]||{l:0,r:0,w:0};y.l+=leg;y.r+=bc;if(e.k=="w"&&!e.ro)y.w++;
+  if(e.k=="nb")fh=true;else if(leg)fh=false;
+  ov[ov.length-1].push({lab:lab,k:e.k,r:r,bowl:e.bowl,runs:(e.k=="wd"||e.k=="nb")?1+r:r});
+  if(leg){L++;if(L%6==0)ov.push([])}
+ });
+ var last=S.ev[S.ev.length-1],ll=last&&last.k!="wd"&&last.k!="nb";
+ return{runs:runs,w:w,L:L,ex:ex,ov:ov,bat:bat,bw:bw,out:out,fh:S.fh&&fh,done:w>=10||(S.max&&L>=S.max*6),overEnd:!!(ll&&L%6==0)};
+}
+function ppInfo(oi){var m=S.max;if(!S.pp||!m)return null;var a;
+ if(m==50)a=oi<10?[2,"Powerplay 1",10]:oi<40?[4,"Powerplay 2",40]:[5,"Powerplay 3",50];
+ else{var n=m==20?6:Math.ceil(m*0.3);a=oi<n?[2,"Powerplay",n]:[5,"After powerplay",m]}
+ return{out:a[0],name:a[1],left:a[2]-oi,oi:oi,std:m==20||m==50}}
+function sw(){var c=S.cur,t=c.str;c.str=c.non;c.non=t}
+function add(e){
+ var d=derive();if(d.done)return;var c=S.cur;
+ e.str=c.str;e.non=c.non;e.bowl=c.bowl;e.snap={str:c.str,non:c.non,bowl:c.bowl,bl:S.bat.length};
+ var r=e.r||0,leg=e.k!="wd"&&e.k!="nb";
+ if(e.k=="w"){var so=e.ro?e.who!="non":true;
+  e.out=so?c.str:c.non;S.bat.push("Batter "+(S.bat.length+1));if(so)c.str=S.bat.length-1;else c.non=S.bat.length-1}
+ else if(r%2)sw();
+ if(leg&&(d.L+1)%6==0)sw();
+ S.ev.push(e);save();render();
+}
+function chip(b){var c=b.k=="w"?"w":(b.k=="run"?(b.r>=4?"b":""):"x");return '<div class="ball '+c+'">'+b.lab+'</div>'}
+function oversText(L){return Math.floor(L/6)+"."+(L%6)}
+function render(){
+ document.querySelectorAll(".tabs button").forEach(function(b){b.classList.toggle("on",b.dataset.t==S.tab)});
+ var d=derive(),h="",c=S.cur;
+ if(S.tab=="score"){
+  var ob=d.ov[d.ov.length-1],prev=d.ov.length>1?d.ov[d.ov.length-2][0]:null,cb=d.bw[c.bowl]||{l:0,r:0,w:0};
+  if(d.done)h+='<div class="ban end">Innings over — '+(d.w>=10?"all out":"overs complete")+'. Tell the captains and scorers.</div>';
+  else{
+   if(d.fh)h+='<div class="ban fh">FREE HIT — the batter can only be out run out, hit the ball twice or obstructing the field.</div>';
+   if(d.overEnd)h+='<div class="ban">Over complete. Call “over”, change ends, new bowler from the other end.</div>';
+   var wn="";
+   if(!ob.length&&prev&&prev.bowl==c.bowl)wn="Same bowler as the last over — a bowler can’t bowl consecutive overs. Change bowler.";
+   else if(!ob.length&&S.bmax&&cb.l>=S.bmax*6)wn="This bowler has bowled their maximum of "+S.bmax+" overs.";
+   if(wn)h+='<div class="ban end">'+wn+'</div>';
+   var pi=ppInfo(Math.floor(d.L/6));
+   if(pi)h+='<div class="ban pp">'+pi.name+' · over '+(pi.oi+1)+': max '+pi.out+' fielders outside the 30-yard circle · '+pi.left+(pi.left==1?' over':' overs')+' left in this phase'+(pi.std?'':'. Reduced-overs match: check the playing conditions.')+'</div>';
+  }
+  var cur=d.ov[d.overEnd?d.ov.length-2:d.ov.length-1]||[];
+  h+='<div class="card"><div class="big"><div><b>'+d.runs+'/'+d.w+'</b><span>Score</span></div><div><b>'+oversText(d.L)+'</b><span>Overs'+(S.max?" / "+S.max:"")+'</span></div><div><b>'+d.ex+'</b><span>Extras</span></div></div>';
+  h+='<div class="balls">'+(cur.length?cur.map(chip).join(""):'<span class="mu">No balls yet this over</span>')+'</div></div>';
+  var h0=h;h="";h+='<div class="card"><div class="mu">AT THE CREASE · type to edit names</div>';
+  [[c.str,"★ "],[c.non,""]].forEach(function(p){var x=d.bat[p[0]]||{r:0,b:0};h+='<div class="ov"><span class="nm">'+p[1]+'<input class="ni" data-bn="'+p[0]+'" maxlength="24" value="'+esc(S.bat[p[0]])+'"></span><b>'+x.r+' <span class="mu">('+x.b+')</span></b></div>'});
+  h+='<div class="ov"><span>Bowler <select id="bsel">'+S.bowl.map(function(n,i){return '<option value="'+i+'"'+(i==c.bowl?" selected":"")+'>'+esc(n)+'</option>'}).join("")+'</select></span><b>'+oversText(cb.l)+'-'+cb.r+'-'+cb.w+'</b></div>';
+  h+='<div class="ov"><span class="nm">Bowler name<input class="ni" id="bname" maxlength="24" value="'+esc(S.bowl[c.bowl])+'"></span>'+(ADDB?'<input class="ni" id="nbn" maxlength="24" placeholder="Name" style="width:110px"><button id="nbok">Add</button>':'<button id="bnew">+ New</button>')+'</div>';
+  h+='<div class="row"><button id="swap">⇄ Swap strike</button></div></div>';
+  var cr=h;h=h0;
+  if(PR)h+='<div class="card"><b>Run out</b><div class="mu" style="margin-top:6px">Runs completed before the run out</div><div class="modes" style="margin-top:6px">'+[0,1,2,3,4].map(function(n){return '<button data-rr="'+n+'" class="'+(PRR==n?"on":"")+'">'+n+'</button>'}).join("")+'</div><div class="mu">Who is out?</div><div class="row"><button data-ro2="str">'+esc(S.bat[c.str])+' (striker)</button><button data-ro2="non">'+esc(S.bat[c.non])+'</button></div><div class="row"><button id="roc">Cancel</button></div></div>';
+  var M=[["run","Runs"],["wd","Wide"],["nb","No ball"],["bye","Bye"],["lb","Leg bye"]];
+  h+='<div class="modes">'+M.map(function(m){return '<button data-m="'+m[0]+'" class="'+(S.mode==m[0]?"on":"")+'">'+m[1]+'</button>'}).join("")+'</div><div class="pad">';
+  [0,1,2,3,4,5,6].forEach(function(n){var lab=(S.mode=="wd"||S.mode=="nb")&&n==0?"+0":n;if((S.mode=="bye"||S.mode=="lb")&&n==0)return h+='<button disabled>–</button>';h+='<button data-r="'+n+'"'+(d.done?" disabled":"")+'>'+lab+'</button>'});
+  h+='<button class="wk" data-w="1"'+(d.done||S.mode!="run"||d.fh?" disabled":"")+'>OUT</button>';
+  h+='<button class="wk" data-ro="1" style="grid-column:span 4"'+(d.done||S.mode!="run"?" disabled":"")+'>Run out</button></div>';
+  h+='<div class="mu" style="margin-top:8px">Strike swaps on odd runs and at the end of each over. Wide and no ball add the 1 penalty run for you. OUT credits the bowler; Run out does not. Runs off a no ball go to the batter, off a wide, bye or leg bye they don’t.</div>';
+  h+='<div class="row"><button id="undo"'+(S.ev.length?"":" disabled")+'>↶ Undo last ball</button><button id="reset">'+(RC?"Tap again to clear":"New innings")+'</button></div>';
+  h+=cr;
+  h+='<div class="row mu"><label>Match <select id="max">'+[[0,"Unlimited"],[5,"5 ov"],[10,"10 ov"],[20,"20 ov"],[50,"50 ov"]].map(function(o){return '<option value="'+o[0]+'"'+(S.max==o[0]?" selected":"")+'>'+o[1]+'</option>'}).join("")+'</select></label><label>Bowler max <input class="ni" type="number" id="bmax" min="0" max="50" inputmode="numeric" style="width:70px" value="'+S.bmax+'"> (0 = none)</label></div>';
+  h+='<div class="row mu"><label><input type="checkbox" id="fhc"'+(S.fh?" checked":"")+'> Free hit after no ball</label><label><input type="checkbox" id="ppc"'+(S.pp?" checked":"")+'> Powerplay</label></div>';
+  h+='<div class="card"><div class="mu">SHARE WITH THE OTHER UMPIRE</div>';
+  if(!DB)h+='<div class="mu" style="margin-top:6px">Live sharing isn’t available here. Open the page signed in with Contributor or Editor access.</div>';
+  else if(S.mc)h+='<div class="ov"><span>Match code <b style="letter-spacing:.1em">'+S.mc+'</b></span><button id="leave">Leave</button></div><div class="mu">'+(syncMsg||(S.watch?"Watching live. View only, nothing you do here changes the match.":"Live: both umpires see every ball. Score from one phone at a time."))+'</div>';
+  else h+='<div class="row"><button id="mstart">Start shared match</button></div><div class="row"><input class="ni" id="mcode" placeholder="Enter code" maxlength="8" style="text-transform:uppercase"><button id="mjoin">Join</button><button id="mwatch">Watch</button></div>'+(jmsg?'<div class="mu">'+jmsg+'</div>':"");
+  h+='</div>';
+ }else if(S.tab=="overs"){
+  h+='<div class="card"><div class="mu">BATTING</div>';
+  S.bat.forEach(function(n,i){var x=d.bat[i];if(!x&&i!=c.str&&i!=c.non&&!d.out[i])return;x=x||{r:0,b:0};h+='<div class="ov"><span>'+esc(n)+' <span class="mu">'+(d.out[i]?"out":"not out")+'</span></span><b>'+x.r+' <span class="mu">('+x.b+')</span></b></div>'});
+  h+='</div><div class="card"><div class="mu">BOWLING · overs-runs-wickets</div>';
+  S.bowl.forEach(function(n,i){var y=d.bw[i];if(!y)return;h+='<div class="ov"><span>'+esc(n)+'</span><b>'+oversText(y.l)+'-'+y.r+'-'+y.w+'</b></div>'});
+  if(!S.ev.length)h+='<span class="mu">Nothing yet.</span>';
+  h+='</div><div class="card"><div class="mu">OVER BY OVER</div>';
+  d.ov.forEach(function(o,i){if(!o.length)return;var r=o.reduce(function(a,b){return a+b.runs},0),wk=o.filter(function(b){return b.k=="w"}).length;
+   h+='<div class="ov"><div><b>Over '+(i+1)+'</b> <span class="mu">'+esc(S.bowl[o[0].bowl]||"")+'</span><div class="balls" style="justify-content:flex-start;margin-top:6px;min-height:0">'+o.map(chip).join("")+'</div></div><div style="text-align:right"><b>'+r+' runs</b><div class="mu">'+wk+' wkt</div></div></div>'});
+  h+='</div>';
+ }else{
+  h+='<input class="s" id="q" placeholder="Search rules: lbw, no ball, signal…" value="'+esc(S.q)+'">';
+  var q=S.q.toLowerCase().trim(),n=0;
+  RULES.forEach(function(r){if(q&&(r[0]+" "+r[1]+" "+r[2]+" "+r[3]).toLowerCase().indexOf(q)<0)return;n++;
+   h+='<div class="card rule"><span class="tag">'+r[0]+'</span><h3>'+r[1]+'</h3><p>'+r[2]+'</p></div>'});
+  if(!n)h+='<div class="card mu">No matches. Try a different word.</div>';
+  h+='<div class="mu">Quick summaries only. For anything disputed, follow the current MCC Laws of Cricket and the match’s playing conditions.</div>';
+ }
+ document.getElementById("app").innerHTML=h;spec();wire();
+}
+function wire(){
+ var $=function(i){return document.getElementById(i)};
+ document.querySelectorAll("[data-m]").forEach(function(b){b.onclick=function(){S.mode=b.dataset.m;save();render()}});
+ document.querySelectorAll("[data-r]").forEach(function(b){b.onclick=function(){var m=S.mode;if(m!="run"){S.mode="run"}add({k:m,r:+b.dataset.r})}});
+ var w=document.querySelector("[data-w]");if(w)w.onclick=function(){add({k:"w"})};
+ var ro=document.querySelector("[data-ro]");if(ro)ro.onclick=function(){PR=true;PRR=0;render()};
+ document.querySelectorAll("[data-ro2]").forEach(function(b){b.onclick=function(){PR=false;add({k:"w",ro:1,r:PRR,who:b.dataset.ro2})}});
+ if($("roc"))$("roc").onclick=function(){PR=false;render()};
+ document.querySelectorAll("[data-rr]").forEach(function(b){b.onclick=function(){PRR=+b.dataset.rr;render()}});
+ document.querySelectorAll("[data-bn]").forEach(function(b){b.onchange=function(){var v=b.value.trim();if(v)S.bat[+b.dataset.bn]=v.slice(0,24);save();render()}});
+ if($("bname"))$("bname").onchange=function(){var v=this.value.trim();if(v)S.bowl[S.cur.bowl]=v.slice(0,24);save();render()};
+ if($("bnew"))$("bnew").onclick=function(){ADDB=true;render();var i=$("nbn");if(i)i.focus()};
+ if($("nbok"))$("nbok").onclick=function(){var n=$("nbn").value.trim();ADDB=false;if(n){S.bowl.push(n.slice(0,24));S.cur.bowl=S.bowl.length-1;save()}render()};
+ if($("bsel"))$("bsel").onchange=function(){var v=this.value;if(v=="new"){var n=prompt("New bowler name","Bowler "+(S.bowl.length+1));if(n&&n.trim()){S.bowl.push(n.trim().slice(0,24));S.cur.bowl=S.bowl.length-1}}else S.cur.bowl=+v;save();render()};
+ if($("swap"))$("swap").onclick=function(){sw();save();render()};
+ if($("undo"))$("undo").onclick=function(){var e=S.ev.pop();if(e){S.cur={str:e.snap.str,non:e.snap.non,bowl:e.snap.bowl};S.bat.length=e.snap.bl}save();render()};
+ if($("reset"))$("reset").onclick=function(){if(!RC){RC=true;render();setTimeout(function(){RC=false;render()},4000);return}RC=false;S.ev=[];S.mode="run";S.cur={str:0,non:1,bowl:0};S.bat=["Batter 1","Batter 2"];save();render()};
+ if($("max"))$("max").onchange=function(){S.max=+this.value;save();render()};
+ if($("bmax"))$("bmax").onchange=function(){var v=Math.round(+this.value);S.bmax=v>0?Math.min(v,50):0;save();render()};
+ if($("fhc"))$("fhc").onchange=function(){S.fh=this.checked;save();render()};
+ if($("ppc"))$("ppc").onchange=function(){S.pp=this.checked;save();render()};
+ if($("mstart"))$("mstart").onclick=function(){join(gen(),true)};
+ if($("mjoin"))$("mjoin").onclick=function(){var v=($("mcode").value||"").trim().toUpperCase();if(v)join(v,false)};
+ if($("mwatch"))$("mwatch").onclick=function(){var v=($("mcode").value||"").trim().toUpperCase();if(v)join(v,false,true)};
+ if($("leave"))$("leave").onclick=leave;
+ var q=$("q");if(q)q.oninput=function(){S.q=q.value;save();var p=q.selectionStart;render();var n=$("q");n.focus();n.setSelectionRange(p,p)};
+}
+document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){S.tab=b.dataset.t;save();render()}});
+render();
+try{if(window.claude&&claude.use)claude.use("db").then(function(d){DB=d;if(DB&&S.mc)join(S.mc,true,S.watch);else render()}).catch(function(){})}catch(e){}
+</script></body></html>
